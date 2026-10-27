@@ -1,59 +1,105 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# CarbonTrace
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplikasi web pelacakan jejak karbon personal (Tugas Besar PPL, mendukung SDG 13).
+Dibangun dengan Laravel 12, Blade, Tailwind CSS, Alpine.js, dan Laravel Breeze.
 
-## About Laravel
+## Modul Gamifikasi — Man Rezki Setiawan (102022430015)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+| PBI | Fitur | Pengguna | Administrator |
+| --- | --- | --- | --- |
+| PBI-13 (KF-14) | Manajemen Lencana | Galeri lencana di `/lencana`: status terkunci/terbuka beserta progres menuju syarat | CRUD di `/admin/lencana`: nama, deskripsi, jenis syarat, nilai syarat, gambar, status aktif. Lencana yang sudah diraih tidak bisa dihapus, hanya dinonaktifkan |
+| PBI-14 (KF-15) | Manajemen Tantangan | Daftar tantangan yang sedang dan akan berjalan di `/tantangan`, beserta halaman detail | CRUD di `/admin/tantangan`: judul, kategori, periode, target penurunan (kg CO₂e), hadiah poin, dan daftar peserta. Tantangan yang sudah diikuti peserta aktif tidak bisa dihapus |
+| PBI-15 (KF-16) | Keikutsertaan Tantangan | `/tantangan-saya`: **ikuti** (Create), **pantau progres & saring status** (Read), **perbarui progres** (Update: berjalan → selesai/gagal), **mundur** (Delete: status jadi batal, lalu bisa ikut lagi) | Pemantauan peserta di halaman detail tantangan |
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Cara menghitung progres tantangan
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+1. **Garis dasar**: rata-rata emisi harian pengguna pada kategori tantangan selama 30 hari sebelum ia mulai,
+   dibagi jumlah hari yang memiliki catatan aktivitas.
+2. **Penghematan**: setiap hari selama tantangan yang memiliki catatan aktivitas menyumbang
+   `garis dasar − emisi kategori pada hari itu`.
+3. **Progres** = total penghematan ÷ `reduction_target` × 100%.
+   - Mencapai 100% → status **selesai**, EcoPoint diberikan satu kali (`point_logs`), lalu lencana dievaluasi.
+   - Periode berakhir sebelum 100% → status **gagal** tanpa poin.
+   - Pengguna yang belum punya catatan dalam 30 hari sebelumnya belum memiliki garis dasar, jadi progresnya tetap 0%.
 
-## Learning Laravel
+Evaluasi berjalan saat pengguna mencatat atau menghapus aktivitas, membuka dashboard atau Tantangan Saya,
+menekan *Perbarui progres*, dan setiap hari pukul 00.10 lewat perintah terjadwal `challenges:evaluate`.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### Jenis syarat lencana
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Jenis | Nilai yang dibandingkan |
+| --- | --- |
+| `activities_logged` | Jumlah catatan aktivitas |
+| `streak` | Hari pencatatan berturut-turut (`users.streak_count`) |
+| `challenges_completed` | Jumlah tantangan berstatus selesai |
+| `points` | Total EcoPoint (`users.points`) |
 
-## Laravel Sponsors
+### Kode utama
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- `app/Services/GamificationService.php`: poin, streak, dan pemberian lencana
+- `app/Services/ChallengeProgressService.php`: perhitungan progres dan status tantangan
+- `app/Http/Controllers/Admin/BadgeController.php` dan `Admin/ChallengeController.php`: CRUD administrator
+- `app/Http/Controllers/BadgeController.php`, `ChallengeController.php`, `ChallengeParticipationController.php`: sisi pengguna
+- `tests/Feature/Gamification/`: feature test untuk ketiga PBI
 
-### Premium Partners
+## Fitur pendukung (versi minimal, milik modul lain)
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Bagian ini dibuat secukupnya agar modul gamifikasi bisa dijalankan dan didemokan.
+Pemilik PBI terkait dapat menggantinya dengan versi lengkap.
 
-## Contributing
+| Fitur | Versi di repo ini | Versi lengkap |
+| --- | --- | --- |
+| Registrasi, login, logout | Laravel Breeze | KF-01 |
+| Peran admin/user | Tabel `roles`, kolom `users.role_id`, middleware `admin` | KF-04 |
+| Kategori & faktor emisi | Hanya seeder (`CategorySeeder`), tanpa CRUD | PBI-07, PBI-08 |
+| Pencatatan aktivitas | `/aktivitas`: tambah, lihat, hapus | PBI-04 |
+| Perhitungan emisi | `EmissionCalculator` (jumlah × faktor) | KF-20 |
+| Dashboard | Ringkasan emisi, poin, streak, tantangan, lencana | KF-21 |
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Menjalankan proyek
 
-## Code of Conduct
+Kebutuhan: PHP 8.2+, Composer, Node.js 18+, dan MySQL 8 (Laragon/XAMPP).
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
 
-## Security Vulnerabilities
+# buat database "carbontrace" di MySQL, lalu:
+php artisan migrate --seed
+php artisan storage:link
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+npm install
+npm run build
 
-## License
+php artisan serve
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Buka http://localhost:8000. Jika memakai SQLite, ubah `.env` menjadi `DB_CONNECTION=sqlite`
+lalu hapus baris `DB_HOST` sampai `DB_PASSWORD`.
+
+### Akun demo (kata sandi: `password`)
+
+| Surel | Peran | Isi |
+| --- | --- | --- |
+| `admin@carbontrace.test` | Administrator | Akses Kelola Tantangan dan Kelola Lencana (menu nama pengguna) |
+| `user@carbontrace.test` | Pengguna | Riwayat 33 hari, 1 tantangan selesai, 1 tantangan berjalan, 4 lencana |
+| `budi@carbontrace.test` | Pengguna | Ikut tantangan tanpa garis dasar (progres 0%) |
+
+### Tugas terjadwal
+
+Untuk menjalankan scheduler secara lokal:
+
+```bash
+php artisan schedule:work
+# atau sekali jalan:
+php artisan challenges:evaluate
+```
+
+## Pengujian
+
+```bash
+php artisan test
+```
+
+Test memakai SQLite in-memory, jadi tidak perlu MySQL atau build aset.
